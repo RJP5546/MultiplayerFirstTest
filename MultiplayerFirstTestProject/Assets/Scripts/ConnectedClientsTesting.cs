@@ -1,4 +1,5 @@
 using Unity.Netcode;
+using Unity.Services.Lobbies;
 using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
@@ -21,14 +22,12 @@ namespace Unity.Multiplayer.Widgets
             shouldRun = false;
             */
 
-            if (SessionManager.Instance.ReturnActiveSession().AsHost().Properties != null)
+            UpdateLobbyOptions updateOptions = new UpdateLobbyOptions()
             {
-                foreach (var property in SessionManager.Instance.ReturnActiveSession().AsHost().Properties)
-                {
-                    Debug.Log(property);
-                }
-            }
-            else { Debug.Log("No properties"); }
+                MaxPlayers = 3
+            };
+
+            LobbyService.Instance.UpdateLobbyAsync(HostManager.Instance.lobbyId, updateOptions);
         }
     }
 

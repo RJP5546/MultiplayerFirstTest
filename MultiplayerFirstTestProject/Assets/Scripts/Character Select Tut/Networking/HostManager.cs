@@ -6,22 +6,26 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Unity.Services.Multiplayer;
 using Unity.Multiplayer.Widgets;
-using System.Linq;
+using Unity.Services.Relay.Models;
+using Unity.Services.Relay;
+using Unity.Networking.Transport.Relay;
+using Unity.Netcode.Transports.UTP;
+using Unity.Services.Lobbies;
+using Unity.Services.Lobbies.Models;
+using System.Collections;
 
 public class HostManager : NetworkBehaviour
 {
     public static HostManager Instance { get; private set; }
+    public Dictionary<ulong, ClientData> ClientData { get; private set; }
+    public string JoinCode { get; private set; }
+
+    [SerializeField] private int maxPlayers;
     [SerializeField] private string characterSelectSceneName;
     [SerializeField] private string gameplaySceneName;
 
-
-    [SerializeField] private WidgetConfiguration networkWidgetConfig;
-    [SerializeField] private int playersInLobbyCount;
-    private int maxPlayers = 2;
-
-    public Dictionary<ulong, ClientData> ClientData { get; private set; }
-
-
+    public string lobbyId { get; private set; }
+    //private string lobbyId;
     private bool hasGameStarted;
 
     private void Awake()
@@ -35,12 +39,11 @@ public class HostManager : NetworkBehaviour
             Instance = this;
         }
         DontDestroyOnLoad(gameObject);
-        networkWidgetConfig.MaxPlayers = maxPlayers;
-
     }
 
     public void AddClientData(ulong clientId)
     {
+        Debug.Log("onClientConnectd");
         if (ClientData == null) { ResetClientData(); }
         //adds the client data to the dictionary of client data, if already in, it will update. If not in it will add
         ClientData[clientId] = new ClientData(clientId);
@@ -49,73 +52,111 @@ public class HostManager : NetworkBehaviour
 
     }
 
-   public void StartHostListeners()
+   public async void StartHost()
    {
-        ResetClientData();
+        //create a relay allocation
+        Allocation allocation;
+        try
+        {
+            allocation = await RelayService.Instance.CreateAllocationAsync(maxPlayers);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+            throw;
+        }
+        //get the join code for that allocation
+        try
+        {
+            JoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+            Debug.Log($"Join code: {JoinCode}");
+        }
+        catch
+        {
+            Debug.LogError("Relay get join code request failed");
+            throw;
+        }
+        //set the relay server data to the relay allocation we created
+        var relayServerData = allocation.ToRelayServerData("dtls");
+        NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
 
-        //NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
+        //Set up the lobby and lobby options
+        try
+        {
+            var createLobbyOptions = new CreateLobbyOptions();
+            createLobbyOptions.IsPrivate = false;
+            createLobbyOptions.Data = new Dictionary<string, DataObject>()
+            {
+                {
+                    "JoinCode", new DataObject(
+                        visibility: DataObject.VisibilityOptions.Member,
+                        value: JoinCode
+                    )
+                }
+            };
 
-        //every time someone tries to join this server, run this method
+            Lobby lobby = await LobbyService.Instance.CreateLobbyAsync("MyLobby", maxPlayers, createLobbyOptions);
+            lobbyId = lobby.Id;
+            //pings the lobby every 15 seconds to prevent time out
+            StartCoroutine(HeartbeatLobbyCoroutine(15));
+        }
+        catch (LobbyServiceException e)
+        {
+            Debug.LogError(e);
+            throw;
+        }
+
+
+        //start listening for connection approvals
+        NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
         NetworkManager.Singleton.OnClientConnectedCallback += AddClientData;
-       NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
-   }
-    public void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
-    {
-        
+        NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
 
-        if (playersInLobbyCount < maxPlayers)
-        {
-            response.Approved = true;
-            response.CreatePlayerObject = false;
-            response.Pending = false;
-            playersInLobbyCount += 1;
-        }
-        else
-        {
-            response.Approved = false;
-            response.Pending = false;
-        }
-
-        Debug.Log($"connection approval response: {response.Approved} for Id: {request.ClientNetworkId}");
-    }
-
-    private void example(string obj)
-    {
-        throw new NotImplementedException();
-    }
-
-    /*
-   public void StartHost()
-   {
-       //start listening for connection approvals
-       NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
-       NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
-
-       //resets the dictionary of client data
-       ClientData = new Dictionary<ulong, ClientData>();
+        //resets the dictionary of client data
+        ClientData = new Dictionary<ulong, ClientData>();
 
        NetworkManager.Singleton.StartHost();
-   }
+        var joinedLobbies = await LobbyService.Instance.GetJoinedLobbiesAsync();
+        foreach (string lobby in joinedLobbies)
+        {
+            Debug.Log("Current lobby ID: " + lobby);
+        }
+        
+
+    }
+
+    //prevents lobby timeout
+    private IEnumerator HeartbeatLobbyCoroutine(float waitTimeSeconds)
+    {
+        var delay = new WaitForSeconds(waitTimeSeconds);
+        while (true)
+        {
+            LobbyService.Instance.SendHeartbeatPingAsync(lobbyId);
+            yield return delay;
+        }
+    }
 
    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest _request, NetworkManager.ConnectionApprovalResponse _response)
    {
+        Debug.Log("approval Chack");
        //if the limit on players have joined or the game has started, deny approval
        if (ClientData.Count >= 4 || hasGameStarted)
        {
            _response.Approved = false;
            return;
        }
-
+        
        _response.Approved = true;
        _response.CreatePlayerObject = false;
        _response.Pending = false;
+
+        
 
        //adds the client data to the dictionary of client data, if already in, it will update. If not in it will add
        ClientData[_request.ClientNetworkId] = new ClientData(_request.ClientNetworkId);
 
        Debug.Log($"Added ClientId: {_request.ClientNetworkId}");
    }
-*/
     private void OnNetworkReady()
    {
        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;

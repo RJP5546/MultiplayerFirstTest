@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
 
@@ -16,6 +17,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
     [SerializeField] private TMP_Text characterNameText;
     [SerializeField] private Transform introSpawnPoint;
     [SerializeField] private Button lockInButton;
+    [SerializeField] private TMP_Text joinCodeText;
 
     private GameObject introInstance;
     private List<CharacterSelectButton> characterButtons = new List<CharacterSelectButton>();
@@ -57,6 +59,11 @@ public class CharacterSelectDisplay : NetworkBehaviour
             {
                 HandleClientConnected(client.ClientId);
             }
+        }
+
+        if (IsHost)
+        {
+            joinCodeText.text = HostManager.Instance.JoinCode;
         }
     }
 
@@ -207,5 +214,21 @@ public class CharacterSelectDisplay : NetworkBehaviour
 
             break;
         }
+    }
+
+    public void CopySessionCodeToClipboard()
+    {
+        // Deselect the button when clicked.
+        EventSystem.current.SetSelectedGameObject(null);
+
+        var code = joinCodeText.text;
+
+        if (HostManager.Instance.JoinCode == null || string.IsNullOrEmpty(code))
+        {
+            return;
+        }
+
+        // Copy the text to the clipboard.
+        GUIUtility.systemCopyBuffer = code;
     }
 }
