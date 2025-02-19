@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
+using Unity.Services.Multiplayer;
 using UnityEngine;
 
 public class CharacterSpawner : NetworkBehaviour
@@ -10,10 +11,13 @@ public class CharacterSpawner : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        if (!IsServer) { return; }
 
+        if (!IsServer) { return; }
+        Debug.Log($"clientDataSize: {HostManager.Instance.ClientData.Count}");
+        
         foreach (var client in HostManager.Instance.ClientData)
         {
+            Debug.Log("ServerSpawnChar");
             //load their character
             var character = characterDatabase.GetCharacterById(client.Value.characterId);
             if (character != null)
@@ -24,5 +28,11 @@ public class CharacterSpawner : NetworkBehaviour
                 characterInstance.SpawnAsPlayerObject(client.Value.clientId);
             }
         }
+        /*
+        foreach (var client in NetworkManager.Singleton.ConnectedClients)
+        {
+            client.
+        }
+        */
     }
 }

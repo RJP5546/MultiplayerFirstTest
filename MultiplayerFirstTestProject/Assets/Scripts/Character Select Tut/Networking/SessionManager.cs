@@ -16,6 +16,8 @@ public class SessionManager : MonoBehaviour
     [SerializeField] private string characterSelectSceneName;
     [SerializeField] private TMP_InputField lobbyJoinCodeField;
 
+    public Dictionary<ulong, ClientData> ClientData { get; private set; }
+
     ISession activeSession;
 
     ISession ActiveSession
@@ -50,6 +52,7 @@ public class SessionManager : MonoBehaviour
             await UnityServices.InitializeAsync(); // Initialize Unity Gaming Services SDKs.
             await AuthenticationService.Instance.SignInAnonymouslyAsync(); // Anonymously authenticate the player
             Debug.Log($"Sign in anonymously succeeded! PlayerID: {AuthenticationService.Instance.PlayerId}");
+            Debug.Log($"PlayerName: {AuthenticationService.Instance.PlayerName}");
         }
         catch (Exception e)
         {
@@ -79,12 +82,19 @@ public class SessionManager : MonoBehaviour
 
         ActiveSession = await MultiplayerService.Instance.CreateSessionAsync(options);
         Debug.Log($"Session {ActiveSession.Id} created! Join code: {ActiveSession.Code}");
-        NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
+        //NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
     }
 
     async void JoinSessionById(string sessionId)
     {
-        ActiveSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId);
+        var playerProperties = await GetPlayerProperties();
+
+        var joinSessionOptions = new JoinSessionOptions
+        {
+            PlayerProperties = playerProperties
+        };
+
+        ActiveSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, joinSessionOptions);
         Debug.Log($"Session {ActiveSession.Id} joined!");
     }
 
@@ -134,5 +144,20 @@ public class SessionManager : MonoBehaviour
     public void JoinViaCode()
     {
         JoinSessionByCode(lobbyJoinCodeField.text);
+    }
+
+    public void JoinViaId()
+    {
+        JoinSessionById(lobbyJoinCodeField.text);
+    }
+
+    public void LoadNextScene()
+    {
+        NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
+    }
+
+    public ISession ReturnActiveSession()
+    {
+        return ActiveSession;
     }
 }

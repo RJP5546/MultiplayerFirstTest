@@ -20,7 +20,8 @@ public class CharacterSelectDisplay : NetworkBehaviour
     private GameObject introInstance;
     private List<CharacterSelectButton> characterButtons = new List<CharacterSelectButton>();
 
-    private NetworkList<CharacterSelectState> players;
+    [SerializeField] private NetworkList<CharacterSelectState> players;
+
 
     private void Awake()
     {
@@ -75,6 +76,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
     private void HandleClientConnected(ulong clientID)
     {
         players.Add(new CharacterSelectState(clientID));
+        Debug.Log($"Connected client ID: {clientID}");
     }
 
     private void HandleClientDisconnect(ulong clientID)
@@ -157,6 +159,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
 
         foreach (var player in players)
         {
+            
             if (!player.IsLockedIn) { return; }
         }
 
