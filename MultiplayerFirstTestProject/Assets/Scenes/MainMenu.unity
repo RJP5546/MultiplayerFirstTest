@@ -2545,6 +2545,7 @@ MonoBehaviour:
   gameplaySceneName: Gameplay
   networkWidgetConfig: {fileID: 11400000, guid: 94c7e8a14aba000418b40a789e2b5662, type: 2}
   playersInLobbyCount: 0
+  LobbyId: 
 --- !u!114 &791575667
 MonoBehaviour:
   m_ObjectHideFlags: 0

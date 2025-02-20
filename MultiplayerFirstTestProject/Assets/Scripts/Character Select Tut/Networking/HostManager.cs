@@ -7,6 +7,10 @@ using UnityEngine.SceneManagement;
 using Unity.Services.Multiplayer;
 using Unity.Multiplayer.Widgets;
 using System.Linq;
+using Unity.Services.Lobbies;
+using System.Collections;
+using System.Threading.Tasks;
+using Unity.Services.Lobbies.Models;
 
 public class HostManager : NetworkBehaviour
 {
@@ -21,7 +25,7 @@ public class HostManager : NetworkBehaviour
 
     public Dictionary<ulong, ClientData> ClientData { get; private set; }
 
-
+    public string LobbyId;
     private bool hasGameStarted;
 
     private void Awake()
@@ -58,7 +62,7 @@ public class HostManager : NetworkBehaviour
         //every time someone tries to join this server, run this method
         NetworkManager.Singleton.OnClientConnectedCallback += AddClientData;
        NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
-   }
+    }
     public void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
         
@@ -77,11 +81,6 @@ public class HostManager : NetworkBehaviour
         }
 
         Debug.Log($"connection approval response: {response.Approved} for Id: {request.ClientNetworkId}");
-    }
-
-    private void example(string obj)
-    {
-        throw new NotImplementedException();
     }
 
     /*
@@ -116,11 +115,24 @@ public class HostManager : NetworkBehaviour
        Debug.Log($"Added ClientId: {_request.ClientNetworkId}");
    }
 */
-    private void OnNetworkReady()
+
+    private async void OnNetworkReady()
    {
        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;
        NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
-   }
+        
+        try
+        {
+            var joinedLobbies = await LobbyService.Instance.GetJoinedLobbiesAsync();
+            LobbyId = joinedLobbies[0];
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+            throw;
+        }
+        Debug.Log("Current lobby ID: " + LobbyId);
+    }
 
     private void OnClientDisconnect(ulong _clientID)
    {
