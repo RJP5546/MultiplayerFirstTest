@@ -16,7 +16,7 @@ public class SessionManager : MonoBehaviour
     [SerializeField] private string characterSelectSceneName;
     [SerializeField] private TMP_InputField lobbyJoinCodeField;
 
-    public Dictionary<ulong, ClientData> ClientData { get; private set; }
+    public Dictionary<ulong, PlayerData> ClientData { get; private set; }
 
     ISession activeSession;
 

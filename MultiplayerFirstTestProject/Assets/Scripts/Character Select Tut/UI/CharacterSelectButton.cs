@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 public class CharacterSelectButton : MonoBehaviour
@@ -23,7 +25,8 @@ public class CharacterSelectButton : MonoBehaviour
 
     public void SelectCharacter()
     {
-        characterSelect.Select(Character);
+        PlayerInformation playerInfo = GetComponentInParent<PlayerInformation>();
+        characterSelect.Select(Character, playerInfo.LocalPlayerNumber);
     }
 
     public void SetDisabled()
@@ -32,4 +35,5 @@ public class CharacterSelectButton : MonoBehaviour
         disabledOverlay.SetActive(true);
         button.interactable = false;
     }
+
 }

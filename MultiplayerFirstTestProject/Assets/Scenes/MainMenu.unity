@@ -2545,6 +2545,7 @@ MonoBehaviour:
   gameplaySceneName: Gameplay
   networkWidgetConfig: {fileID: 11400000, guid: 94c7e8a14aba000418b40a789e2b5662, type: 2}
   playersInLobbyCount: 0
+  maxPlayers: 4
   LobbyId: 
 --- !u!114 &791575667
 MonoBehaviour:
@@ -4299,7 +4300,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1670070993}
-    PlayerPrefab: {fileID: 0}
+    PlayerPrefab: {fileID: 1063161394961786874, guid: 22c5d073c717e0d4cbe3e40c322926b4, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: 09b2258b8d7eccf4b84a656437cc8aa5, type: 2}

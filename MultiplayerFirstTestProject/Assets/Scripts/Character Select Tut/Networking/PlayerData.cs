@@ -1,35 +1,32 @@
 using System;
 using Unity.Netcode;
 
-public struct CharacterSelectState : INetworkSerializable, IEquatable<CharacterSelectState>
+[Serializable]
+public struct PlayerData : INetworkSerializable, IEquatable<PlayerData>
 {
     public ulong ClientId;
     public int LocalPlayerNumber;
     public int CharacterId;
-    public bool IsLockedIn;
 
-    public CharacterSelectState(ulong clientId, int localPlayerNumber,int characterId = -1, bool isLockedIn = false)
+    public PlayerData(ulong clientId, int localPlayerNumber, int characterId = -1)
     {
         ClientId = clientId;
         LocalPlayerNumber = localPlayerNumber;
         CharacterId = characterId;
-        IsLockedIn = isLockedIn;
     }
-
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref ClientId);
         serializer.SerializeValue(ref LocalPlayerNumber);
         serializer.SerializeValue(ref CharacterId);
-        serializer.SerializeValue(ref IsLockedIn);
     }
 
-    //returns true or false if this struct matches the one being passed (if the client matches the server or if a change has occurred)
-    public bool Equals(CharacterSelectState other)
+    public bool Equals(PlayerData other)
     {
         return ClientId == other.ClientId &&
             LocalPlayerNumber == other.LocalPlayerNumber &&
-            CharacterId == other.CharacterId &&
-            IsLockedIn == other.IsLockedIn;
+            CharacterId == other.CharacterId;
     }
+
+
 }

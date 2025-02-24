@@ -1,16 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
-using Unity.Services.Authentication;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Unity.Services.Multiplayer;
 using Unity.Multiplayer.Widgets;
-using System.Linq;
 using Unity.Services.Lobbies;
-using System.Collections;
-using System.Threading.Tasks;
-using Unity.Services.Lobbies.Models;
+using System.Linq;
 
 public class HostManager : NetworkBehaviour
 {
@@ -21,9 +16,8 @@ public class HostManager : NetworkBehaviour
 
     [SerializeField] private WidgetConfiguration networkWidgetConfig;
     [SerializeField] private int playersInLobbyCount;
-    private int maxPlayers = 2;
-
-    public Dictionary<ulong, ClientData> ClientData { get; private set; }
+    [SerializeField] private int maxPlayers = 2;
+    public NetworkList<PlayerData> PlayerDataList { get; private set; }
 
     public string LobbyId;
     private bool hasGameStarted;
@@ -40,38 +34,45 @@ public class HostManager : NetworkBehaviour
         }
         DontDestroyOnLoad(gameObject);
         networkWidgetConfig.MaxPlayers = maxPlayers;
-
     }
 
-    public void AddClientData(ulong clientId)
+    public void StartHostListeners()
     {
-        if (ClientData == null) { ResetClientData(); }
-        //adds the client data to the dictionary of client data, if already in, it will update. If not in it will add
-        ClientData[clientId] = new ClientData(clientId);
-        Debug.Log($"ClientIDLenght: {ClientData.Count}");
-        Debug.Log($"ClientID: {clientId}");
+        //run on start host being clicked on main menu UI
+        ResetPlayerData();
 
-    }
+        NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
 
-   public void StartHostListeners()
-   {
-        ResetClientData();
-
-        //NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
+        PlayerDataList.OnListChanged += PlayerDataListChanged;
 
         //every time someone tries to join this server, run this method
-        NetworkManager.Singleton.OnClientConnectedCallback += AddClientData;
-       NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
+        NetworkManager.Singleton.OnClientConnectedCallback += AddClient;
+        NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
     }
+
+    private void PlayerDataListChanged(NetworkListEvent<PlayerData> changeEvent)
+    {
+        foreach (var player in PlayerDataList)
+        {
+            Debug.Log($"In List: ClientID:{player.ClientId} LocalPlayerNum:{player.LocalPlayerNumber}");
+        }
+    }
+
+    public void ResetPlayerData()
+    {
+        //resets the dictionary of client data
+        PlayerDataList = new NetworkList<PlayerData>();
+    }
+
     public void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-        
 
         if (playersInLobbyCount < maxPlayers)
         {
             response.Approved = true;
             response.CreatePlayerObject = false;
             response.Pending = false;
+            response.CreatePlayerObject = true;
             playersInLobbyCount += 1;
         }
         else
@@ -80,41 +81,77 @@ public class HostManager : NetworkBehaviour
             response.Pending = false;
         }
 
-        Debug.Log($"connection approval response: {response.Approved} for Id: {request.ClientNetworkId}");
     }
 
-    /*
-   public void StartHost()
-   {
-       //start listening for connection approvals
-       NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
-       NetworkManager.Singleton.OnServerStarted += OnNetworkReady;
 
-       //resets the dictionary of client data
-       ClientData = new Dictionary<ulong, ClientData>();
+    public void AddClient(ulong _clientId)
+    {
+        Debug.Log($"Client {_clientId} connected");
+        /*
+        Debug.Log("Add Client Called");
 
-       NetworkManager.Singleton.StartHost();
-   }
+        //if the player is the first to join, reset and add their data
+        if (PlayerDataList.Count == 0)
+        {
+            PlayerDataList.Add(new PlayerDataList(_clientId, 0));
+            Debug.Log($"PlayerDataList Contains client:{PlayerDataList[0].ClientId} LocalPlayer num: {PlayerDataList[0].LocalPlayerNumber}");
+            return;
+        }
+        Debug.Log("PlayerDataList is not null");
+        //adds the client data to the list of PlayerDataList, if already in, it will update. If not in it will add. Clients are added as the first local player
+        for (int i =0; i < PlayerDataList.Count; i++)
+        {
+            //if the player id is already connected, update the info, if they have any local players on record, remove them
+            if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber == 0)
+            {
+                PlayerDataList[i] = new PlayerDataList(_clientId, 0);
+            }
+            else if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber != 0)
+            {
+                PlayerDataList.Remove(PlayerDataList[i]);
+            }
+            else { PlayerDataList.Add(new PlayerDataList(_clientId, 0)); }
+        }
 
-   private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest _request, NetworkManager.ConnectionApprovalResponse _response)
-   {
-       //if the limit on players have joined or the game has started, deny approval
-       if (ClientData.Count >= 4 || hasGameStarted)
-       {
-           _response.Approved = false;
-           return;
-       }
+        //Debug for testing to see who is in the list
+        playerDataDebugInfo = PlayerDataList.ToArray();
+        foreach (var player in playerDataDebugInfo)
+        {
+            Debug.Log($"PlayerDataList Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
+        }
+        */
+    }
 
-       _response.Approved = true;
-       _response.CreatePlayerObject = false;
-       _response.Pending = false;
+    public void AddClientLocalPlayer(ulong _clientId, int _localPlayerNumber)
+    {
+        if (IsClient) { Debug.Log("Client called addClientPLayer"); }
+        if(IsServer) { Debug.Log("Server called addClientPLayer"); }
 
-       //adds the client data to the dictionary of client data, if already in, it will update. If not in it will add
-       ClientData[_request.ClientNetworkId] = new ClientData(_request.ClientNetworkId);
+        bool isInList = false;
+        int indexInList = 0;
 
-       Debug.Log($"Added ClientId: {_request.ClientNetworkId}");
-   }
-*/
+        //adds the client data to the list of PlayerDataList, if already in, it will update. If not in it will add. Clients are added as the first local player
+        for (int i = 0; i < PlayerDataList.Count; i++)
+        {
+            //if the player id is already connected, update the info, if they have any local players on record, remove them
+            if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber == _localPlayerNumber)
+            {
+                isInList = true;
+                indexInList = i;
+            }
+            else { continue; }
+        }
+
+        if (isInList) PlayerDataList[indexInList] = new PlayerData(_clientId, _localPlayerNumber);
+        else PlayerDataList.Add(new PlayerData(_clientId, _localPlayerNumber));
+
+        //Debug for testing to see who is in the list
+        foreach (var player in PlayerDataList)
+        {
+            Debug.Log($"PlayerData Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
+        }
+    }
+
 
     private async void OnNetworkReady()
    {
@@ -136,29 +173,34 @@ public class HostManager : NetworkBehaviour
 
     private void OnClientDisconnect(ulong _clientID)
    {
-       if (ClientData.ContainsKey(_clientID))
-       {
-           if (ClientData.Remove(_clientID))
-           {
-               Debug.Log($"Removed ClientId: {_clientID}");
-           }
-       }
-   }
+        //removes a client and all its players from the player list
+        foreach (PlayerData playerData in PlayerDataList)
+        {
+            if (playerData.ClientId == _clientID)
+            {
+                PlayerDataList.Remove(playerData);
+                Debug.Log($"Removed ClientId: {_clientID}");
+            }
+        }
 
-    public void ResetClientData()
-    {
-        //resets the dictionary of client data
-        ClientData = new Dictionary<ulong, ClientData>();
+        //Debug for testing to see who is in the list
+        foreach (var player in PlayerDataList)
+        {
+            Debug.Log($"PlayerData Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
+        }
     }
+
+
 
     //Tell the server manager which client is which player
     public void SetCharacter(ulong _clientID, int _characterId)
     {
-        
-        if (ClientData.TryGetValue(_clientID, out ClientData data))
+        /*
+        if (PlayerDataList.TryGetValue(_clientID, out PlayerDataList data))
         {
-            data.characterId = _characterId;
+            data.CharacterId = _characterId;
         }
+        */
     }
 
     //start the game

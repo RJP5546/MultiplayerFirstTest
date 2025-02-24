@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
@@ -21,7 +22,6 @@ public class CharacterSelectDisplay : NetworkBehaviour
     private List<CharacterSelectButton> characterButtons = new List<CharacterSelectButton>();
 
     [SerializeField] private NetworkList<CharacterSelectState> players;
-
 
     private void Awake()
     {
@@ -75,7 +75,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
 
     private void HandleClientConnected(ulong clientID)
     {
-        players.Add(new CharacterSelectState(clientID));
+        players.Add(new CharacterSelectState(clientID, 0));
         Debug.Log($"Connected client ID: {clientID}");
     }
 
@@ -92,7 +92,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
         }
     }
 
-    public void Select(Character character)
+    public void Select(Character character, int localPlayerIndex)
     {
         //check if the player is locked in, or already has that character selected. If so, return and do nothing
         for (int i = 0; i < players.Count; i++)
@@ -118,12 +118,12 @@ public class CharacterSelectDisplay : NetworkBehaviour
         introInstance = Instantiate(character.IntroPrefab, introSpawnPoint);
 
         //tells the server what character you want to select
-        SelectServerRpc(character.Id);
+        SelectServerRpc(character.Id, localPlayerIndex);
     }
 
     //lets us parameters without anything owning the object
     [ServerRpc(RequireOwnership = false)]
-    private void SelectServerRpc(int characterId, ServerRpcParams serverRpcParams = default)
+    private void SelectServerRpc(int characterId, int localPlayerIndex, ServerRpcParams serverRpcParams = default)
     {
         for (int i = 0;i < players.Count;i++)
         {
@@ -133,18 +133,18 @@ public class CharacterSelectDisplay : NetworkBehaviour
             if (!characterDatabase.IsValidCharacterId(characterId)) { return; }
 
             //server update player info
-            players[i] = new CharacterSelectState(players[i].ClientId, characterId, players[i].IsLockedIn);
+            players[i] = new CharacterSelectState(players[i].ClientId, localPlayerIndex, characterId, players[i].IsLockedIn);
         }
     }
 
-    public void LockIn()
+    public void LockIn(int localPlayerIndex)
     {
-        LockInServerRpc();
+        LockInServerRpc(localPlayerIndex);
     }
 
     //lets us parameters without anything owning the object
     [ServerRpc(RequireOwnership = false)]
-    private void LockInServerRpc(ServerRpcParams serverRpcParams = default)
+    private void LockInServerRpc(int localPLayerIndex, ServerRpcParams serverRpcParams = default)
     {
         for (int i = 0; i < players.Count; i++)
         {
@@ -154,7 +154,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
             if (!characterDatabase.IsValidCharacterId(players[i].CharacterId)) { return; }
 
             //server update player info
-            players[i] = new CharacterSelectState(players[i].ClientId, players[i].CharacterId, true);
+            players[i] = new CharacterSelectState(players[i].ClientId, localPLayerIndex, players[i].CharacterId, true);
         }
 
         foreach (var player in players)

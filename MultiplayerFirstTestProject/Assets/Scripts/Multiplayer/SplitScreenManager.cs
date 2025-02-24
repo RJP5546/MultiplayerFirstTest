@@ -6,16 +6,16 @@ using Unity.Netcode;
 using UnityEngine.TextCore.Text;
 using UnityEditor.PackageManager;
 using Unity.Template.Multiplayer.NGO.Runtime;
+using System.Linq;
 
-
-public class SplitScreenManager : NetworkBehaviour
+public class SplitScreenManager : MonoBehaviour
 {
     [SerializeField] private PlayerInputManager playerinputManager;
-    [SerializeField] private List<GameObject> localPlayers;
+    [SerializeField] private List<PlayerInput> localPlayers;
 
     private void Awake()
     {
-        localPlayers = new List<GameObject>();
+        localPlayers = new List<PlayerInput>();
     }
 
     void OnEnable()
@@ -26,21 +26,50 @@ public class SplitScreenManager : NetworkBehaviour
 
     void OnDisable()
     {
-
         PlayerInputManager.instance.onPlayerJoined -= PlayerJoined;
         PlayerInputManager.instance.onPlayerLeft -= PlayerLeft;
     }
 
+    public void TestPLayerConnect()
+    {
+        Debug.Log("TestPlayerConnect");
+    }
+
     private void PlayerJoined(PlayerInput playerInput)
     {
-        localPlayers.Add(playerInput.gameObject);
-        UpdateSplitScreenCameras();
+        ulong playerInputOwnerClientId = playerInput.GetComponent<NetworkObject>().OwnerClientId;
+
+
+        //if the player belongs to the local client add them to the local client list
+        if (playerInputOwnerClientId == NetworkManager.Singleton.LocalClientId)
+        {
+            localPlayers.Add(playerInput);
+            playerInput.GetComponent<PlayerInformation>().LocalPlayerNumber = localPlayers.Count;
+        }
+        
+        //if the server is listening to them
+        if (NetworkManager.Singleton.IsServer)
+        {
+            HostManager.Instance.AddClientLocalPlayer(playerInputOwnerClientId, playerInput.GetComponent<PlayerInformation>().LocalPlayerNumber);
+        }
+
+        //UpdateSplitScreenCameras();
     }
 
     private void PlayerLeft(PlayerInput playerInput)
     {
-        localPlayers.Remove(playerInput.gameObject);
-        UpdateSplitScreenCameras();
+        ulong playerInputOwnerClientId = playerInput.GetComponent<NetworkObject>().OwnerClientId;
+
+
+        //if the player belongs to the local client add them to the local client list
+        if (playerInputOwnerClientId == NetworkManager.Singleton.LocalClientId)
+        {
+            localPlayers.Remove(playerInput);
+        }
+
+        //add server remove player option
+        
+        //UpdateSplitScreenCameras();
     }
 
     private void UpdateSplitScreenCameras()
