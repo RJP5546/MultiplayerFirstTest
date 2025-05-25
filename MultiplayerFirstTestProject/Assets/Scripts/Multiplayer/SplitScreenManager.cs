@@ -1,22 +1,32 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic ;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
-using UnityEngine.TextCore.Text;
-using UnityEditor.PackageManager;
-using Unity.Template.Multiplayer.NGO.Runtime;
-using System.Linq;
+using System.Collections;
 
 public class SplitScreenManager : MonoBehaviour
 {
     [SerializeField] private PlayerInputManager playerinputManager;
     [SerializeField] private List<PlayerInput> localPlayers;
+    [SerializeField] private NetworkObject localPlayerObject;
+    private ulong localClientID;
 
     private void Awake()
     {
         localPlayers = new List<PlayerInput>();
+        playerinputManager = PlayerInputManager.instance;
+        
+        //if the server, log the host player into the system, prevents it from being skipped
+        if (NetworkManager.Singleton.IsServer)
+        {
+            //Add host player
+            localPlayerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+            PlayerJoined(localPlayerObject.GetComponent<PlayerInput>());
+            Debug.Log("Add host to playerList");
+        }
+        localClientID = NetworkManager.Singleton.LocalClientId;
     }
+
 
     void OnEnable()
     {
@@ -26,31 +36,50 @@ public class SplitScreenManager : MonoBehaviour
 
     void OnDisable()
     {
-        PlayerInputManager.instance.onPlayerJoined -= PlayerJoined;
-        PlayerInputManager.instance.onPlayerLeft -= PlayerLeft;
-    }
-
-    public void TestPLayerConnect()
-    {
-        Debug.Log("TestPlayerConnect");
+        playerinputManager.onPlayerJoined -= PlayerJoined;
+        playerinputManager.onPlayerLeft -= PlayerLeft;
     }
 
     private void PlayerJoined(PlayerInput playerInput)
     {
-        ulong playerInputOwnerClientId = playerInput.GetComponent<NetworkObject>().OwnerClientId;
+        //check if the lobby is full
+        if (HostManager.Instance.IsLobbyFull())
+        {
+            Debug.Log("Lobby full, split screen joining disabled");
+            playerinputManager.DisableJoining();
+            Destroy(playerInput.gameObject);
+            return;
+        }
 
+        //spawn the network object
+        //if (NetworkManager.Singleton.IsClient && !playerInput.GetComponent<NetworkObject>().IsSpawned) { HostManager.Instance.SpawnClientLocalPlayerNetworkObject(playerInput.GetComponent<NetworkObject>(), localClientID); }
+
+        StartCoroutine(AddPlayerToServerPlayerList(playerInput));       
+    }
+
+    private IEnumerator AddPlayerToServerPlayerList(PlayerInput playerInput)
+    {
+        Debug.Log("PlayerJoinedRun");
+        while (!playerInput.GetComponent<NetworkObject>().IsSpawned)
+        {
+            yield return null;
+        }
+        //Debug.Log("WhileLoopDone");
+        //once the player has spawned on the network
+        ulong playerInputOwnerClientId = playerInput.GetComponent<NetworkObject>().OwnerClientId;
+        //Debug.Log($"deos player client id match client id: {playerInputOwnerClientId == localClientID}");
 
         //if the player belongs to the local client add them to the local client list
-        if (playerInputOwnerClientId == NetworkManager.Singleton.LocalClientId)
+        if (playerInputOwnerClientId == localClientID)
         {
             localPlayers.Add(playerInput);
             playerInput.GetComponent<PlayerInformation>().LocalPlayerNumber = localPlayers.Count;
         }
-        
-        //if the server is listening to them
+
+        //If the server, update the network player list
         if (NetworkManager.Singleton.IsServer)
         {
-            HostManager.Instance.AddClientLocalPlayer(playerInputOwnerClientId, playerInput.GetComponent<PlayerInformation>().LocalPlayerNumber);
+            //HostManager.Instance.AddClientLocalPlayer(playerInputOwnerClientId, playerInput.GetComponent<PlayerInformation>().LocalPlayerNumber);
         }
 
         //UpdateSplitScreenCameras();
@@ -62,7 +91,7 @@ public class SplitScreenManager : MonoBehaviour
 
 
         //if the player belongs to the local client add them to the local client list
-        if (playerInputOwnerClientId == NetworkManager.Singleton.LocalClientId)
+        if (playerInputOwnerClientId == localClientID)
         {
             localPlayers.Remove(playerInput);
         }

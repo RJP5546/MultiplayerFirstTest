@@ -13,14 +13,22 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField]
     Camera playerCamera;
 
+    private void Start()
+    {
+        NetworkObject networkObj = GetComponent<NetworkObject>();
+        if (!networkObj.IsSpawned)
+        {
+            networkObj.Spawn();
+        }
+    }
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
 
-        enabled = IsClient;
         if (!IsOwner)
         {
-            enabled = false;
+            enabled = false; //stup updates on this obj
             m_CharacterController.enabled = false;
             playerInput.enabled = false;
             return;
@@ -33,7 +41,7 @@ public class PlayerMovement : NetworkBehaviour
         // position on owning clients
         m_CharacterController.enabled = true;
 
-        playerCamera.enabled = true;
+        //playerCamera.enabled = true;
 
     }
 

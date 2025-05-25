@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
@@ -25,8 +26,7 @@ public class CharacterSelectButton : MonoBehaviour
 
     public void SelectCharacter()
     {
-        PlayerInformation playerInfo = GetComponentInParent<PlayerInformation>();
-        characterSelect.Select(Character, playerInfo.LocalPlayerNumber);
+        characterSelect.Select(Character);
     }
 
     public void SetDisabled()

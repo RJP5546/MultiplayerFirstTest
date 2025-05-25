@@ -1516,7 +1516,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1283327671}
         m_TargetAssemblyTypeName: SplitScreenManager, Assembly-CSharp
-        m_MethodName: TestPLayerConnect
+        m_MethodName: DebugInputManager
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1541,7 +1541,7 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
     m_Reference: {fileID: 0}
-  m_PlayerPrefab: {fileID: 1063161394961786874, guid: 22c5d073c717e0d4cbe3e40c322926b4, type: 3}
+  m_PlayerPrefab: {fileID: 8831797816258486513, guid: f2790bdf6897b404a840b6e54531e38d, type: 3}
   m_SplitScreen: 0
   m_MaintainAspectRatioInSplitScreen: 0
   m_FixedNumberOfSplitScreens: -1
@@ -3230,8 +3230,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 262036a8c70b1b44fa71bf7cb0cbc30b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerinputManager: {fileID: 621441381}
+  playerinputManager: {fileID: 0}
   localPlayers: []
+  localPlayerObject: {fileID: 0}
 --- !u!4 &1283327673
 Transform:
   m_ObjectHideFlags: 0

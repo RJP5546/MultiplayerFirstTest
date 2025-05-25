@@ -13,8 +13,8 @@ public class CharacterSelectDisplay : NetworkBehaviour
     [SerializeField] private Transform charactersHolder;
     [SerializeField] private CharacterSelectButton selectButtonPrefab;
     [SerializeField] private PlayerCard[] playerCards;
-    [SerializeField] private GameObject characterInfoPanel;
-    [SerializeField] private TMP_Text characterNameText;
+    //[SerializeField] private GameObject characterInfoPanel;
+    //[SerializeField] private TMP_Text characterNameText;
     [SerializeField] private Transform introSpawnPoint;
     [SerializeField] private Button lockInButton;
 
@@ -75,8 +75,8 @@ public class CharacterSelectDisplay : NetworkBehaviour
 
     private void HandleClientConnected(ulong clientID)
     {
-        players.Add(new CharacterSelectState(clientID, 0));
-        Debug.Log($"Connected client ID: {clientID}");
+        players.Add(new CharacterSelectState(clientID));
+        //Debug.Log($"Connected client ID: {clientID}");
     }
 
     private void HandleClientDisconnect(ulong clientID)
@@ -92,7 +92,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
         }
     }
 
-    public void Select(Character character, int localPlayerIndex)
+    public void Select(Character character)
     {
         //check if the player is locked in, or already has that character selected. If so, return and do nothing
         for (int i = 0; i < players.Count; i++)
@@ -105,8 +105,8 @@ public class CharacterSelectDisplay : NetworkBehaviour
         }
 
 
-        characterNameText.text = character.DisplayName;
-        characterInfoPanel.SetActive(true);
+        //characterNameText.text = character.DisplayName;
+        //characterInfoPanel.SetActive(true);
 
         if(introInstance != null)
         {
@@ -118,12 +118,12 @@ public class CharacterSelectDisplay : NetworkBehaviour
         introInstance = Instantiate(character.IntroPrefab, introSpawnPoint);
 
         //tells the server what character you want to select
-        SelectServerRpc(character.Id, localPlayerIndex);
+        SelectServerRpc(character.Id);
     }
 
     //lets us parameters without anything owning the object
     [ServerRpc(RequireOwnership = false)]
-    private void SelectServerRpc(int characterId, int localPlayerIndex, ServerRpcParams serverRpcParams = default)
+    private void SelectServerRpc(int characterId, ServerRpcParams serverRpcParams = default)
     {
         for (int i = 0;i < players.Count;i++)
         {
@@ -133,18 +133,18 @@ public class CharacterSelectDisplay : NetworkBehaviour
             if (!characterDatabase.IsValidCharacterId(characterId)) { return; }
 
             //server update player info
-            players[i] = new CharacterSelectState(players[i].ClientId, localPlayerIndex, characterId, players[i].IsLockedIn);
+            players[i] = new CharacterSelectState(players[i].ClientId, characterId, players[i].IsLockedIn);
         }
     }
 
-    public void LockIn(int localPlayerIndex)
+    public void LockIn()
     {
-        LockInServerRpc(localPlayerIndex);
+        LockInServerRpc();
     }
 
     //lets us parameters without anything owning the object
     [ServerRpc(RequireOwnership = false)]
-    private void LockInServerRpc(int localPLayerIndex, ServerRpcParams serverRpcParams = default)
+    private void LockInServerRpc(ServerRpcParams serverRpcParams = default)
     {
         for (int i = 0; i < players.Count; i++)
         {
@@ -154,7 +154,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
             if (!characterDatabase.IsValidCharacterId(players[i].CharacterId)) { return; }
 
             //server update player info
-            players[i] = new CharacterSelectState(players[i].ClientId, localPLayerIndex, players[i].CharacterId, true);
+            players[i] = new CharacterSelectState(players[i].ClientId, players[i].CharacterId, true);
         }
 
         foreach (var player in players)
@@ -183,6 +183,7 @@ public class CharacterSelectDisplay : NetworkBehaviour
             if(players.Count > i)
             {
                 //updates the cards for number of players in the game
+                Debug.Log("HandlePlayerStateChanged");
                 playerCards[i].UpdateDisplay(players[i]);
             }
             else

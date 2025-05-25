@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 using Unity.Multiplayer.Widgets;
 using Unity.Services.Lobbies;
 using System.Linq;
+using Unity.Services.Multiplayer;
 
 public class HostManager : NetworkBehaviour
 {
@@ -15,8 +16,8 @@ public class HostManager : NetworkBehaviour
 
 
     [SerializeField] private WidgetConfiguration networkWidgetConfig;
-    [SerializeField] private int playersInLobbyCount;
-    [SerializeField] private int maxPlayers = 2;
+    [SerializeField] private int playersInLobbyCount = 0;
+    [SerializeField] private int maxPlayers = 4;
     public NetworkList<PlayerData> PlayerDataList { get; private set; }
 
     public string LobbyId;
@@ -40,7 +41,6 @@ public class HostManager : NetworkBehaviour
     {
         //run on start host being clicked on main menu UI
         ResetPlayerData();
-
         NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
 
         PlayerDataList.OnListChanged += PlayerDataListChanged;
@@ -54,7 +54,7 @@ public class HostManager : NetworkBehaviour
     {
         foreach (var player in PlayerDataList)
         {
-            Debug.Log($"In List: ClientID:{player.ClientId} LocalPlayerNum:{player.LocalPlayerNumber}");
+            Debug.Log($"In List: ClientID:{player.ClientId}");
         }
     }
 
@@ -66,67 +66,44 @@ public class HostManager : NetworkBehaviour
 
     public void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-
         if (playersInLobbyCount < maxPlayers)
         {
             response.Approved = true;
-            response.CreatePlayerObject = false;
             response.Pending = false;
             response.CreatePlayerObject = true;
-            playersInLobbyCount += 1;
+            //player count will be updated when a playerinput object connects to allow counitng of split screen players
         }
         else
         {
             response.Approved = false;
             response.Pending = false;
         }
-
     }
 
+
+    private async void OnNetworkReady()
+    {
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;
+        NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
+
+        if (LobbyId == "")
+        {
+            try
+            {
+                var joinedLobbies = await LobbyService.Instance.GetJoinedLobbiesAsync();
+                LobbyId = joinedLobbies[0];
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                throw;
+            }
+            //Debug.Log("Current lobby ID: " + LobbyId);
+        }
+    }
 
     public void AddClient(ulong _clientId)
     {
-        Debug.Log($"Client {_clientId} connected");
-        /*
-        Debug.Log("Add Client Called");
-
-        //if the player is the first to join, reset and add their data
-        if (PlayerDataList.Count == 0)
-        {
-            PlayerDataList.Add(new PlayerDataList(_clientId, 0));
-            Debug.Log($"PlayerDataList Contains client:{PlayerDataList[0].ClientId} LocalPlayer num: {PlayerDataList[0].LocalPlayerNumber}");
-            return;
-        }
-        Debug.Log("PlayerDataList is not null");
-        //adds the client data to the list of PlayerDataList, if already in, it will update. If not in it will add. Clients are added as the first local player
-        for (int i =0; i < PlayerDataList.Count; i++)
-        {
-            //if the player id is already connected, update the info, if they have any local players on record, remove them
-            if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber == 0)
-            {
-                PlayerDataList[i] = new PlayerDataList(_clientId, 0);
-            }
-            else if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber != 0)
-            {
-                PlayerDataList.Remove(PlayerDataList[i]);
-            }
-            else { PlayerDataList.Add(new PlayerDataList(_clientId, 0)); }
-        }
-
-        //Debug for testing to see who is in the list
-        playerDataDebugInfo = PlayerDataList.ToArray();
-        foreach (var player in playerDataDebugInfo)
-        {
-            Debug.Log($"PlayerDataList Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
-        }
-        */
-    }
-
-    public void AddClientLocalPlayer(ulong _clientId, int _localPlayerNumber)
-    {
-        if (IsClient) { Debug.Log("Client called addClientPLayer"); }
-        if(IsServer) { Debug.Log("Server called addClientPLayer"); }
-
         bool isInList = false;
         int indexInList = 0;
 
@@ -134,7 +111,7 @@ public class HostManager : NetworkBehaviour
         for (int i = 0; i < PlayerDataList.Count; i++)
         {
             //if the player id is already connected, update the info, if they have any local players on record, remove them
-            if (PlayerDataList[i].ClientId == _clientId && PlayerDataList[i].LocalPlayerNumber == _localPlayerNumber)
+            if (PlayerDataList[i].ClientId == _clientId)
             {
                 isInList = true;
                 indexInList = i;
@@ -142,33 +119,10 @@ public class HostManager : NetworkBehaviour
             else { continue; }
         }
 
-        if (isInList) PlayerDataList[indexInList] = new PlayerData(_clientId, _localPlayerNumber);
-        else PlayerDataList.Add(new PlayerData(_clientId, _localPlayerNumber));
+        if (isInList) PlayerDataList[indexInList] = new PlayerData(_clientId);
+        else PlayerDataList.Add(new PlayerData(_clientId));
 
-        //Debug for testing to see who is in the list
-        foreach (var player in PlayerDataList)
-        {
-            Debug.Log($"PlayerData Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
-        }
-    }
-
-
-    private async void OnNetworkReady()
-   {
-       NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;
-       NetworkManager.Singleton.SceneManager.LoadScene(characterSelectSceneName, LoadSceneMode.Single);
-        
-        try
-        {
-            var joinedLobbies = await LobbyService.Instance.GetJoinedLobbiesAsync();
-            LobbyId = joinedLobbies[0];
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-            throw;
-        }
-        Debug.Log("Current lobby ID: " + LobbyId);
+        playersInLobbyCount++;
     }
 
     private void OnClientDisconnect(ulong _clientID)
@@ -183,13 +137,19 @@ public class HostManager : NetworkBehaviour
             }
         }
 
+        playersInLobbyCount--;
+
         //Debug for testing to see who is in the list
         foreach (var player in PlayerDataList)
         {
-            Debug.Log($"PlayerData Contains client:{player.ClientId} LocalPlayer num: {player.LocalPlayerNumber}");
+            Debug.Log($"PlayerData Contains client:{player.ClientId}");
         }
     }
 
+    public bool IsLobbyFull()
+    {
+        return playersInLobbyCount >= maxPlayers;
+    }
 
 
     //Tell the server manager which client is which player

@@ -4,14 +4,12 @@ using Unity.Netcode;
 public struct CharacterSelectState : INetworkSerializable, IEquatable<CharacterSelectState>
 {
     public ulong ClientId;
-    public int LocalPlayerNumber;
     public int CharacterId;
     public bool IsLockedIn;
 
-    public CharacterSelectState(ulong clientId, int localPlayerNumber,int characterId = -1, bool isLockedIn = false)
+    public CharacterSelectState(ulong clientId, int characterId = -1, bool isLockedIn = false)
     {
         ClientId = clientId;
-        LocalPlayerNumber = localPlayerNumber;
         CharacterId = characterId;
         IsLockedIn = isLockedIn;
     }
@@ -19,7 +17,6 @@ public struct CharacterSelectState : INetworkSerializable, IEquatable<CharacterS
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref ClientId);
-        serializer.SerializeValue(ref LocalPlayerNumber);
         serializer.SerializeValue(ref CharacterId);
         serializer.SerializeValue(ref IsLockedIn);
     }
@@ -28,7 +25,6 @@ public struct CharacterSelectState : INetworkSerializable, IEquatable<CharacterS
     public bool Equals(CharacterSelectState other)
     {
         return ClientId == other.ClientId &&
-            LocalPlayerNumber == other.LocalPlayerNumber &&
             CharacterId == other.CharacterId &&
             IsLockedIn == other.IsLockedIn;
     }
