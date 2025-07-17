@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: DefaultWidgetConfiguration
   m_EditorClassIdentifier: 
   Name: Session
-  ConnectionType: 2
+  ConnectionType: 3
   ConnectionMode: 0
   ListenIpAddress: 127.0.0.1
   PublishIpAddress: 127.0.0.1
   Port: 0
   NetworkHandler: {fileID: 0}
-  MaxPlayers: 2
+  MaxPlayers: 4
   EnableVoiceChat: 0

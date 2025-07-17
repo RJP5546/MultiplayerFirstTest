@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8dedd8068bb3463f97d10eaff64ed5f3, type: 3}
   m_Name: MultiplayerWidgetsSettings
   m_EditorClassIdentifier: 
-  m_UseCustomServiceInitialization: 0
+  m_UseCustomServiceInitialization: 1
